@@ -34,7 +34,25 @@ resource "google_compute_instance" "vm_instance" {
     access_config {
     }
   }
+
+  metadata = {
+    startup-script = <<EOF
+#!/bin/bash
+
+sudo apt-get update
+sudo apt-get install python3-pip -y
+
+pip3 install --upgrade pip
+pip3 install --upgrade flask
+pip3 install -r requirements.txt
+
+python3 app.py
+EOF
+  }
 }
+
+
+
 resource "google_compute_firewall" "ssh" {
   name = "allow-ssh"
   allow {
@@ -46,4 +64,20 @@ resource "google_compute_firewall" "ssh" {
   priority      = 1000
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["ssh"]
+}
+
+resource "google_compute_firewall" "flask" {
+  name    = "flask-app-firewall"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5000"]
+  }
+  source_ranges = ["0.0.0.0/0"]
+}
+
+// A variable for extracting the external IP address of the VM
+output "Web-server-URL" {
+ value = join("",["http://",google_compute_instance.default.network_interface.0.access_config.0.nat_ip,":5000"])
 }
